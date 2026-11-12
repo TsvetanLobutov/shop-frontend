@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
+import Login from './Login'; // Import the new Login component
 
 function App() {
+  // Auth State
+  const [token, setToken] = useState(localStorage.getItem('jwtToken') || '');
+  
   const [products, setProducts] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -10,7 +14,6 @@ function App() {
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('');
 
-  // Review Form State
   const [reviewUsername, setReviewUsername] = useState('');
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
@@ -31,7 +34,6 @@ function App() {
   };
 
   const fetchReviews = () => {
-    // Fetching reviews for product 1 just for the demo
     fetch(`${API_URL}/api/reviews/product/1`)
       .then(response => response.json())
       .then(data => setReviews(data))
@@ -39,9 +41,21 @@ function App() {
   };
 
   useEffect(() => {
-    fetchProducts();
-    fetchReviews();
-  }, []);
+    if (token) {
+      fetchProducts();
+      fetchReviews();
+    }
+  }, [token]);
+
+  const handleLogin = (newToken) => {
+    setToken(newToken);
+    localStorage.setItem('jwtToken', newToken);
+  };
+
+  const handleLogout = () => {
+    setToken('');
+    localStorage.removeItem('jwtToken');
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -67,7 +81,7 @@ function App() {
   const handleReviewSubmit = (e) => {
     e.preventDefault();
     const newReview = {
-      productId: 1, // Hardcoded to product 1 for this demo
+      productId: 1,
       username: reviewUsername,
       rating: parseInt(reviewRating),
       comment: reviewComment,
@@ -95,21 +109,39 @@ function App() {
 
     fetch(`${API_URL}/api/orders`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
       body: JSON.stringify(orderRequest),
     }).then(response => {
       if (response.ok) {
         alert(`Bought 1 ${product.name}!`);
         setTimeout(fetchProducts, 1000); 
+      } else if (response.status === 401) {
+        alert("Session expired. Please log in again.");
+        handleLogout();
       } else {
         alert("Failed to place order.");
       }
     });
   };
 
+  // 👇 THIS IS THE MISSING PART YOU WERE LOOKING FOR 👇
+  // If the token is empty, render the Login component instead of the store.
+  if (!token) {
+    return <Login onLogin={handleLogin} />;
+  }
+
+  // This is the main return for the store
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif', maxWidth: '1000px', margin: '0 auto' }}>
-      <h1>🐾 Pet Shop Inventory</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1>🐾 Pet Shop Inventory</h1>
+        <button onClick={handleLogout} style={{ padding: '8px 16px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+          Logout
+        </button>
+      </div>
       
       {/* Add Product Form */}
       <div style={{ backgroundColor: '#f9f9f9', padding: '20px', borderRadius: '8px', marginBottom: '30px', border: '1px solid #ddd' }}>
