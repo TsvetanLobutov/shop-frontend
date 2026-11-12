@@ -68,19 +68,62 @@ This project was a deep dive into distributed systems and cloud-native developme
     git clone https://github.com/TsvetanLobutov/shop-frontend.git
     cd shop-infrastructure
 
-# React + Vite
+    Start the infrastructure (Databases & Kafka):
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
-
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+**2. Start Minikube**
+ 
+```bash
+minikube start
+```
+ 
+**3. Start the infrastructure (databases and Kafka)**
+ 
+```bash
+kubectl apply -f k8s/infrastructure.yaml
+```
+ 
+**4. Deploy the microservices**
+ 
+```bash
+kubectl apply -f k8s/services.yaml
+```
+ 
+**5. Deploy the frontend**
+ 
+```bash
+kubectl apply -f k8s/frontend.yaml
+```
+ 
+**6. Open the app**
+ 
+```bash
+minikube service shop-frontend
+```
+ 
+---
+ 
+## 🛠️ Troubleshooting
+ 
+**Kafka starts but nothing can connect (`Connection to node -1 could not be established`)**
+ 
+When running Kafka in KRaft mode inside a single pod, the controller quorum must point to `localhost`, not to the Kubernetes Service:
+ 
+```yaml
+- name: KAFKA_CONTROLLER_QUORUM_VOTERS
+  value: "1@localhost:9093"
+```
+ 
+Make sure this variable appears only once in the Kafka deployment. After Kafka logs `Kafka Server started`, restart the order service:
+ 
+```bash
+kubectl rollout restart deployment order-service
+```
+ 
+---
+ 
+## 👤 Author
+ 
+**Tsvetan Lobutov**
+ 
+- [GitHub Profile](https://github.com/TsvetanLobutov)
+- Full-Stack Microservices Developer
