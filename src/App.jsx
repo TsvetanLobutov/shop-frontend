@@ -18,6 +18,10 @@ function App() {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
 
+  // State for simulated notifications
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081';
 
   const fetchProducts = () => {
@@ -117,6 +121,15 @@ function App() {
     }).then(response => {
       if (response.ok) {
         alert(`Bought 1 ${product.name}!`);
+        
+        // ADD THIS: Simulate the notification email
+        const newNotif = {
+          id: Date.now(),
+          message: `📧 Order Confirmed: 1x ${product.name} purchased for $${product.price}.`,
+          time: new Date().toLocaleTimeString()
+        };
+        setNotifications(prev => [newNotif, ...prev]);
+
         setTimeout(fetchProducts, 1000); 
       } else if (response.status === 401) {
         alert("Session expired. Please log in again.");
@@ -136,11 +149,49 @@ function App() {
   // This is the main return for the store
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif', maxWidth: '1000px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      
+      {/* UPDATED HEADER WITH NOTIFICATION BELL */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h1>🐾 Pet Shop Inventory</h1>
-        <button onClick={handleLogout} style={{ padding: '8px 16px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-          Logout
-        </button>
+        
+        <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+          
+          {/* Notification Bell */}
+          <div style={{ position: 'relative' }}>
+            <button 
+              onClick={() => setShowNotifDropdown(!showNotifDropdown)}
+              style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer' }}
+            >
+              🔔
+              {notifications.length > 0 && (
+                <span style={{ position: 'absolute', top: '-5px', right: '-5px', backgroundColor: 'red', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '12px' }}>
+                  {notifications.length}
+                </span>
+              )}
+            </button>
+
+            {/* Dropdown Menu */}
+            {showNotifDropdown && (
+              <div style={{ position: 'absolute', right: 0, top: '40px', width: '300px', backgroundColor: 'white', border: '1px solid #ccc', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 10 }}>
+                <div style={{ padding: '10px', borderBottom: '1px solid #eee', fontWeight: 'bold' }}>Simulated Emails</div>
+                {notifications.length === 0 ? (
+                  <div style={{ padding: '15px', textAlign: 'center', color: '#888' }}>No new notifications</div>
+                ) : (
+                  notifications.map(n => (
+                    <div key={n.id} style={{ padding: '10px', borderBottom: '1px solid #eee', fontSize: '14px' }}>
+                      <p style={{ margin: '0 0 5px 0' }}>{n.message}</p>
+                      <small style={{ color: '#888' }}>{n.time}</small>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
+          <button onClick={handleLogout} style={{ padding: '8px 16px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+            Logout
+          </button>
+        </div>
       </div>
       
       {/* Add Product Form */}
