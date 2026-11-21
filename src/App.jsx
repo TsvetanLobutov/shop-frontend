@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import Login from './Login'; // Import the new Login component
+import Login from './Login';
 
 function App() {
   // Auth State
@@ -24,9 +24,9 @@ function App() {
   const [notifications, setNotifications] = useState([]);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
 
-  // NEW: Cart and View State
+  // Cart and View State
   const [cart, setCart] = useState([]);
-  const [view, setView] = useState('shop'); // 'shop' or 'checkout'
+  const [view, setView] = useState('shop'); 
   const [paymentLoading, setPaymentLoading] = useState(false);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081';
@@ -58,6 +58,44 @@ function App() {
     }
   }, [token]);
 
+  // NEW: Handle Stripe Redirect Success
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    
+    // If Stripe redirected us back with ?success=true
+    if (query.get('success') === 'true' && token) {
+      const savedCart = JSON.parse(localStorage.getItem('pendingCart') || '[]');
+      
+      if (savedCart.length > 0) {
+        const total = savedCart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        
+        // Send order to the backend
+        fetch(`${API_URL}/api/orders`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            productId: savedCart[0].id,
+            quantity: savedCart[0].quantity,
+            price: total
+          })
+        }).then(response => {
+          if (response.ok) {
+            alert("Order placed successfully! Check your email.");
+            localStorage.removeItem('pendingCart');
+            setCart([]); 
+            window.history.replaceState({}, document.title, "/"); // Clean URL
+            fetchProducts(); // Refresh stock levels
+          } else {
+            alert("Payment succeeded, but failed to create order in backend.");
+          }
+        }).catch(err => console.error("Error creating order:", err));
+      }
+    }
+  }, [token]);
+
   const handleLogin = (newToken) => {
     setToken(newToken);
     localStorage.setItem('jwtToken', newToken);
@@ -66,7 +104,7 @@ function App() {
   const handleLogout = () => {
     setToken('');
     localStorage.removeItem('jwtToken');
-    setCart([]); // Clear cart on logout
+    setCart([]); 
     setView('shop');
   };
 
@@ -113,7 +151,6 @@ function App() {
     });
   };
 
-  // NEW: Add to Cart logic
   const addToCart = (product) => {
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
@@ -124,7 +161,6 @@ function App() {
     });
   };
 
-  // NEW: Stripe Checkout logic
   const handleCheckout = async () => {
     if (cart.length === 0) return;
     setPaymentLoading(true);
@@ -138,14 +174,16 @@ function App() {
           'Content-Type': 'application/json', 
           'Authorization': `Bearer ${token}` 
         },
-        // For simplicity, we send the first item's name and the total price
         body: JSON.stringify({ name: cart[0].name + " (and more)", price: total })
       });
       
       const data = await response.json();
       
       if (data.checkoutUrl) {
-        window.location.href = data.checkoutUrl; // Redirect to Stripe
+        // NEW: Save cart to localStorage BEFORE redirecting to Stripe
+        localStorage.setItem('pendingCart', JSON.stringify(cart));
+        
+        window.location.href = data.checkoutUrl; 
       } else {
         alert("Failed to create Stripe session.");
       }
@@ -161,7 +199,6 @@ function App() {
     return <Login onLogin={handleLogin} />;
   }
 
-  // Calculate total items in cart for the badge
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
@@ -204,7 +241,7 @@ function App() {
             )}
           </div>
 
-          {/* NEW: Cart Icon */}
+          {/* Cart Icon */}
           <button 
             onClick={() => setView(view === 'shop' ? 'checkout' : 'shop')} 
             style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', position: 'relative' }}
